@@ -16,7 +16,7 @@ PPD_COMPAT_FRAGMENT_SOURCE="${SCRIPT_DIR}/CpmsPrinter-INOutputMode.ppd.inc"
 EXPECTED_BRIDGE_SHA256="a4e7bd6b562a760bcaac871070fbed8870790753d690b6b8d201a71a14c7505e"
 EXPECTED_BRIDGE_AGENT_SHA256="985ba0046ea0e98c8a91416f3c27ee3c08361c7381e75b87fe8e27d7dfefc925"
 EXPECTED_AUTH_CACHE_SHA256="e9ce7c40b29e56c36b573404b2705aecf3cf58bbacd37490dd3c64645e9481b9"
-EXPECTED_PPD_COMPAT_FRAGMENT_SHA256="a2ee07feb3084012bdc345fc44f65b35189183cc0f0ba9c6fd00a7e33ec10989"
+EXPECTED_PPD_COMPAT_FRAGMENT_SHA256="7301c6f975f5ac60a3dac48e72d70b5ad7165facc3acce2f6b655446333db5b3"
 
 SERVER_HOST="mprint.pjlab.org.cn"
 SERVER_URL="https://${SERVER_HOST}:8085"
@@ -169,8 +169,8 @@ verify_pkg() {
         'import json, pathlib, sys; json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))' \
         "${AUTH_CACHE_SOURCE}" \
         || fail "AD 域认证列表配置不是有效 JSON。"
-    /usr/bin/grep -Fqx '*DefaultINOutputMode: Grayscale' "${PPD_COMPAT_FRAGMENT_SOURCE}" \
-        || fail "原厂 backend 兼容补丁缺少默认灰度属性。"
+    /usr/bin/grep -Fqx '*DefaultINOutputMode: Color' "${PPD_COMPAT_FRAGMENT_SOURCE}" \
+        || fail "原厂 backend 兼容补丁缺少默认彩色属性。"
     /usr/bin/grep -Fqx '*INOutputMode Color/Color: ""' "${PPD_COMPAT_FRAGMENT_SOURCE}" \
         || fail "原厂 backend 兼容补丁缺少彩色属性。"
     ok "辅助 HTTPS 桥、AD 域认证与打印 backend 兼容补丁完整"
@@ -244,7 +244,7 @@ root_owned_path_is_cups_safe() {
 
 queue_uses_compat_ppd() {
     [[ -f "${ACTIVE_PPD_PATH}" ]] \
-        && /usr/bin/grep -Fqx '*DefaultINOutputMode: Grayscale' "${ACTIVE_PPD_PATH}" \
+        && /usr/bin/grep -Eq '^\*DefaultINOutputMode: (Grayscale|Color)$' "${ACTIVE_PPD_PATH}" \
         && /usr/bin/grep -Fqx '*INOutputMode Color/Color: ""' "${ACTIVE_PPD_PATH}"
 }
 
@@ -444,7 +444,7 @@ build_and_install_compat_ppd() {
         fi
     fi
 
-    if ! /usr/bin/grep -Fqx '*DefaultINOutputMode: Grayscale' "${compat_ppd}" \
+    if ! /usr/bin/grep -Fqx '*DefaultINOutputMode: Color' "${compat_ppd}" \
         || ! /usr/bin/grep -Fqx '*INOutputMode Color/Color: ""' "${compat_ppd}" \
         || ! /usr/bin/cupstestppd -q -W all "${compat_ppd}"; then
         /bin/rm -f "${vendor_ppd}" "${compat_ppd}"
@@ -554,8 +554,8 @@ repair_print_queue() {
         -v "${DEVICE_URI}" \
         -P "${COMPAT_PPD_PATH}" \
         -o printer-is-shared=false \
-        -o ColorModel=Gray \
-        -o INOutputMode=Grayscale \
+        -o ColorModel=RGB \
+        -o INOutputMode=Color \
         || fail "无法更新 ${QUEUE_NAME} 打印队列。"
     /usr/bin/sudo /usr/sbin/cupsaccept "${QUEUE_NAME}"
 
